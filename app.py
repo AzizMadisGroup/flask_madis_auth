@@ -71,7 +71,7 @@ def updateTransaction():
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
-   
+    print(data['pinCode'])
     # Si le numéro de téléphone n'existe pas, procéder à l'enregistrement
     hashed_pin = bcrypt.generate_password_hash(data['pinCode']).decode('utf-8')
 
@@ -92,26 +92,38 @@ def register():
 def login():
     data = request.get_json()
     phone_number = data['phoneNumber']
-    user_pin = data['pinCode']  # Pin code provided by the user during login
+    user_pin = data['pinCode'] # Pin code provided by the user during login
 
     user = User.query.filter_by(phone_number=phone_number).first()
 
-    if user and bcrypt.check_password_hash(user.pin_code, user_pin):
-        # Si l'utilisateur existe et que le code PIN correspond, retournez les détails
-        return jsonify({
+    if user and user_pin is not None:
+    # Obtenez le code PIN haché de l'utilisateur
+        user_pin_hash = user.pin_code
+
+    # Vérifiez si le code PIN fourni correspond au code PIN haché de l'utilisateur
+        is_pin_code_correct = bcrypt.check_password_hash(user_pin_hash, user_pin)
+
+        if is_pin_code_correct:
+    # Si l'utilisateur existe et que le code PIN correspond, retournez les détails
+            return make_response(jsonify({
             'firstName': user.first_name,
             'lastName': user.last_name,
             'phoneNumber': user.phone_number,
-            # Vous ne devez pas renvoyer le code PIN haché, mais si nécessaire, vous pouvez le faire
+        # Vous ne devez pas renvoyer le code PIN haché, mais si nécessaire, vous pouvez le faire
             'pinCode': user.pin_code,
-        })
+            }),200) 
+        else:
+            make_response(jsonify({'message': 'Login failed'}),404)
+            return make_response(jsonify({'message': 'Login failed'}),404)
     else:
-        return jsonify({'message': 'Login failed'})
+        return make_response(jsonify({'message': 'Login failed'}),404)
+
 
 @app.route('/verify-number', methods=['POST'])
 def verify_phone_number():
     data = request.get_json()
     phone_number_to_verify = data.get('phoneNumber')
+    print(phone_number_to_verify)
 
     # Vérifier si le numéro de téléphone existe déjà
     existing_user = User.query.filter_by(phone_number=phone_number_to_verify).first()
@@ -199,7 +211,6 @@ def make_transfer():
 def get_all_transactions():
     try:
         transactions = Transactions.query.all()
-        print(transactions)
         # Convertir les objets Transactions en un format JSON
         transactions_json = [{
             'id': transaction.id,
@@ -224,4 +235,4 @@ def get_all_transactions():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(host='192.168.4.116', port=5000, debug=True)
+    app.run(host='192.168.4.33', port=5000, debug=True)
